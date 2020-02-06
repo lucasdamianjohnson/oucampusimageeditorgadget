@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <entry key="types" private="true">sidebar</entry>
+    <entry key="sidebar_context" private="true">edit,page</entry>
+    <entry key="title" private = "true">Image Editor</entry>
+    <entry key="description" private = "true">Provides users with the ability to crop and edit images in OU Campus.</entry>
+    <entry key="icon" private="true">editor-icon.png</entry>
+    <entry key="initial_height" private="true">525</entry>
+    <entry key="thumbnail" private = "true">editor-thumb.png</entry>
+</config>

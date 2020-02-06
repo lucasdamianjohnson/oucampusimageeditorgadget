@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+ <html>
+  <head>
+    <title>File Browser</title>
+    <!--[if (!IE)|(gt IE 8)]><!-->
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="//www.mtu.edu/mtu_resources/script/n/jquery.js"><\/script>')</script>
+      <script type="text/javascript">
+    window.resizeTo(1000, 500);
+    </script>
+    <!--<![endif]-->
+    <!--[if lte IE 8]>
+      <script src="//www.mtu.edu/mtu_resources/script/n/jquery-ie.js"></script>
+    <![endif]-->
+    <link rel="stylesheet" type="text/css" href="//a.cms.omniupdate.com/10/style.css" />
+    <style>
+      #folders ul li{
+        display:inline-block;
+        margin-right:10px;
+      }
+      #folders{
+        min-width:300px;
+        float:left;
+      }
+      #chooser{
+        clear:both;
+        height:350px;
+        overflow-y:scroll;
+        border: 1px solid grey;
+      }
+      .list-view ul li a{
+        vertical-align:middle;
+        display:table-cell;
+        line-height:normal;
+      }
+      .list-view ul li{
+        padding:3px 0px;
+      }
+      .list-view .image:before{
+        display:inline-block;
+        line-height:normal;
+        vertical-align: middle;
+        margin-right:5px;
+        width:16px;
+        height:16px;
+        content:url(image.png);
+      }
+      .list-view .folder:before{
+        display:inline-block;
+        line-height:normal;
+        vertical-align: middle;
+        margin-right:5px;
+        width:16px;
+        height:16px;
+        content:url(folder.png);
+      }
+      .list-view li div{
+        display:none;
+      }
+      .grid-view div{
+        height:64px;
+        line-height:64px;
+      }
+      .grid-view img{
+        max-width:64px;
+        max-height:64px;
+      }
+      .grid-view li span{
+        white-space: nowrap;
+        display:block;
+        text-overflow: ellipsis;
+        width:80px;
+        overflow: hidden;
+      }
+      .grid-view li{
+        width:80px;
+        text-align:center;
+        padding:10px;
+        display:inline-block;
+        margin:3px;
+      }
+      .grid-view ul{
+        margin-top:10px;
+      }
+
+      .selected{
+        background-color:#eaeaea;
+      }
+      #views div.view-selected{
+        background-color:#cccccc;
+      }
+      form{
+        margin:0px;
+      }
+      #select{
+        float:right;
+        margin-right:10px;
+        margin-top:5px;
+      }
+      body{
+        min-width:600px;
+      }
+      .loading{
+        background-image: url("ajax-loader.gif");
+        background-repeat: no-repeat;
+        height:16px;
+        width:16px;
+        margin:10px 20px;
+      }
+      #views{
+        float:right;
+        margin-right:20px;
+      }
+      #views div{
+        display:inline-block;
+        margin-top:3px;
+        margin-bottom:3px;
+      }
+      #views img{
+        margin:5px;
+      }
+    </style>
+    <script>
+	
+		
+		
+      /*File chooser used to locate an image within oucampus*/
+      window.onload = function(){
+        if(window.opener.chooserPath){
+          loadFolder(window.opener.chooserPath);//retrieve the path we should begin in from the parent window.
+        }
+        else{
+          $("#chooser").append($("<p>").css("margin-left","10px").html("Problem Loading folders. Please try again later."));
+        }
+      };
+
+      //function used to update the file chooser with the current path.
+      function loadFolder(path){
+        //display spinner
+        $("#chooser").html('<div class="loading"></div>');
+
+        //setup path navigation at the top.
+        var foldersUL = $("<ul>").css("list-style-type","none");
+        var folders = path.split("/");//split the path we receieve
+        var href="";
+        //build up the anchors for the links. They just run this same function on their respective portions of the path when clicked.
+        for(var i=0;i<folders.length-1;i++){
+          var folderLI = $("<li>");
+          href += folders[i]+"/";
+          if(i < (folders.length-2)){
+            var anchor = $('<a data-path="'+href+'" onclick="loadFolder($(this).data(\'path\'));">'+(folders[i]==""?"/":folders[i])+'</a>');
+            folderLI.append(anchor);
+          }
+          else{
+            folderLI.html(folders[i]==""?"/":folders[i]);
+          }
+          foldersUL.append(folderLI);
+        }
+        $("#folders").empty().append(foldersUL);
+
+        //function that puts in the list of files at the provided path. We have to ask the opener to do this for use, since we don't have
+        //the authorization cookie.
+
+		//Not getting past here ALEX
+		  console.log(window.opener);
+
+        window.opener.getFolderContents(path).then(function(results){
+
+		  console.log(results);
+          var files = results.entries;//list of files at this path.
+          var imagesUL = $("<ul>").css("list-style-type","none");
+
+          //go through all our candidate files
+          for(var i = 0; i < files.length;i++){
+            //has to have the orig.jpg, otherwise we don't want it (always want to be cropping from original)
+            if(files[i].staging_path.match(/.*-orig.jpg$/)){
+              var name = files[i].staging_path.replace(/^(.*[/\\])?/, '');
+              imagesUL.append($('<li><a class="image" title ="'+name+'" data-path="'+files[i].remote_path+''+'"><div><img src="http://a.cms.omniupdate.com/files/content?site=www&path='+files[i].staging_path+'" /></div><span>'+name+'</span></a></li>'));
+            }
+          }
+          //go backwards through candidates, and put in the folders (backwards, because we prepend them)
+          for(var i = files.length-1; i >= 0 ;i--){
+            if(files[i]["file_type"]=="dir"){
+              var name = files[i].staging_path.replace(/^(.*[/\\])?/, '').replace(/(\.[^.]*)$/, '');
+              var anchor = $('<a title ="'+name+'" class="folder" data-path="'+files[i].remote_path+'/'+'" onclick="loadFolder($(this).data(\'path\'));"><div><img src="folder-large.png"/></div><span>'+name+'</span></a>');
+              imagesUL.prepend($("<li>").append(anchor));
+            }
+          }
+
+          //add the files, or, if there isn't any, indicate that.
+          if(imagesUL.find("li").length > 0){
+            $("#chooser").empty().append(imagesUL);
+          }
+          else{
+            $("#chooser").empty().append($("<p>").css("margin-left","10px").html("Directory contains <strong>no</strong> images or folders."));
+          } 
+			/*,function(){
+            $("#chooser").empty().append($("<p>").css("margin-left","10px").html("Authentication expired. Please refresh OU Campus and try again."));}*/
+		} ,function(){
+            $("#chooser").empty().append($("<p>").css("margin-left","10px").html("Authentication expired. Please <strong>close</strong> this screen, <strong>save</strong> any edits you were working on, <strong>reload</strong> the main OU Campus screen, and <strong>try again</strong>."));
+        }
+        );
+      }
+      //when they click a list item, we want to set it to be selected.
+      $(document).delegate("#chooser li", "click", function() {
+        if($(this).find(".image").length > 0){
+          $(".selected").removeClass("selected");
+          $(this).addClass("selected");
+        }
+      });
+      //if they double click an image, then we will want it to immediately submit that image
+      $(document).delegate("#chooser li", "dblclick", function() {
+        $("#submit-image").submit();
+      });
+      //for folders, don't do the selection stuf.
+      $(document).delegate("#chooser li a:not(.image)", "click", function(e) {
+        e.stopPropogation();
+      });
+
+      //handle doing arrows so you can change the selection.
+      $(document).keydown(function(e){
+        //arrow up
+        if(e.which == 38){
+          e.preventDefault();
+          var prev = $(".selected").prev();
+          if($(".selected").length > 0 && prev.length > 0 && prev.find(".image").length > 0){
+            $(".selected").removeClass("selected");
+            prev.addClass("selected").get(0).scrollIntoView();
+          }
+        }
+        //arrow down
+        else if(e.which == 40){
+          e.preventDefault();
+          var next= $(".selected").next();
+          if($(".selected").length > 0 && next.length > 0 && next.find(".image").length > 0){
+            $(".selected").removeClass("selected");
+            next.addClass("selected").get(0).scrollIntoView();
+          }
+        }
+      });
+
+      //switch to list view
+      function listView(){
+        $("#chooser").removeClass("grid-view");
+        $("#chooser").addClass("list-view");
+        $("#list-view").addClass("view-selected");
+        $("#grid-view").removeClass("view-selected");
+      }
+      //switch to grid view
+      function gridView(){
+        $("#chooser").removeClass("list-view");
+        $("#chooser").addClass("grid-view");
+        $("#grid-view").addClass("view-selected");
+        $("#list-view").removeClass("view-selected");
+      }
+    </script>
+  </head>
+  <body>
+    <div id= "folders">
+
+    </div>
+    <div id ="views">
+      <div id = "list-view" class="view-selected"><a onclick= "listView();" ><img src="list.png"/></a></div>
+      <div  id = "grid-view"><a onclick = "gridView();"><img src="grid.png"/></a></div>
+    </div>
+    <div id=  "chooser" class="list-view">
+
+    </div>
+    <div>
+    <form id = "submit-image">
+      <div class="col-md-4 text-center">
+        <input type=  "submit" id = "select" value = "Select"  class="hbutton btn btn-primary">
+        <button id="button-cancel" type="button" class="btn cancel" data-dismiss="modal" onclick="window.close()" style="float: right;margin-top:5px;margin-right:10px;">Cancel </button>
+      </div>
+    </form>
+    <div>
+      <p>Note: Images not created with the image editor are not displayed.</p>
+    </div>
+    <script>
+      //submit the form
+      $("#submit-image").submit(function(e){
+        e.preventDefault();
+        //only do something if they selected something
+        if($(".selected").length == 1){
+          //parse the path for the selection and name
+          var img_path = $(".selected .image").data("path");
+          var img_name = img_path.replace(/^(.*[/\\])?/, '').replace(/(\.[^.]*)$/, '').replace("-orig","");
+          //set those in the original gadget
+          $(window.opener.document.getElementById("title")).val(img_name);
+          $(window.opener.document.getElementById("cms_image")).val(img_path);
+          //close this window.
+          window.opener.closeFileChooser();
+        }
+      });
+    </script>
+    </div>
+  </body>
+</html>
